@@ -14,7 +14,7 @@ function [ bl ] = old_school_baseline( s , bl_points)
 
 %    hold on;
 %    plot(s);
-    ss=s;
+%    ss=s;
     
     s=s+10000;
     s=s.*bl_points;
