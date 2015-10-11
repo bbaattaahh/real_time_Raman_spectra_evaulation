@@ -14,15 +14,12 @@ function [ cs, sh ] = SpectraFlowHandler( s, w, sh )
     sh=[s,sh];
 
     if (size(sh,2)<w)
-        cs=sum(sh,2)/size(sh,2);
-        mo=false;
+        cs=sum(sh, 2)/size(sh,2);
     elseif (size(sh,2)==w)
-        cs=sum(sh,2)/w;
-        mo=true;
+        cs=sum(sh, 2)/w;
     else    
-        sh(:,w+1)=[];
-        cs=sum(sh,2)/w;
-        mo=true;
+        s_in_w = sh(: , 1:w);
+        cs=sum(s_in_w,2)/w;
     end
     
     
