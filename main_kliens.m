@@ -1,4 +1,4 @@
-function varargout = main(varargin)
+function varargout = main_kliens(varargin)
 % MAIN MATLAB code for main.fig
 %      MAIN, by itself, creates a new MAIN or raises the existing
 %      singleton*.
@@ -22,7 +22,7 @@ function varargout = main(varargin)
 
 % Edit the above text to modify the response to help main
 
-% Last Modified by GUIDE v2.5 25-Nov-2014 22:46:19
+% Last Modified by GUIDE v2.5 10-Oct-2015 21:38:59
 
 % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -41,6 +41,7 @@ function varargout = main(varargin)
     else
         gui_mainfcn(gui_State, varargin{:});
     end
+    
 % End initialization code - DO NOT EDIT
 end
 
@@ -183,15 +184,6 @@ function load_references_button_Callback(hObject, eventdata, handles)
 end
 
 
-function edit1_Callback(hObject, eventdata, handles)
-% hObject    handle to edit1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of edit1 as text
-%        str2double(get(hObject,'String')) returns contents of edit1 as a double
-end
-
 % --- Executes during object creation, after setting all properties.
 function edit1_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit1 (see GCBO)
@@ -204,15 +196,6 @@ function edit1_CreateFcn(hObject, eventdata, handles)
         set(hObject,'BackgroundColor','white');
     end
 
-end
-
-function edit2_Callback(hObject, eventdata, handles)
-% hObject    handle to edit2 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of edit2 as text
-%        str2double(get(hObject,'String')) returns contents of edit2 as a double
 end
 
 % --- Executes during object creation, after setting all properties.
@@ -240,12 +223,13 @@ function Connect_button_Callback(hObject, eventdata, handles)
     
     handles.tcpipClient = tcpip(IP,Port,'NetworkRole','Client')
     set(handles.tcpipClient,'InputBufferSize',1000000);              %HENRIK ezeket lehet h paraméterezhetõvé kell tenni
+    set(handles.tcpipClient,'OutputBufferSize',1000000);              %HENRIK ezeket lehet h paraméterezhetõvé kell tenni
     set(handles.tcpipClient,'Timeout',300);                       
     
-    fopen(handles.tcpipClient)
+    fopen(handles.tcpipClient);
     
-    set(handles.text5,'String','CSATLAKOZOTT')
-    set(handles.text5,'FontSize',12)
+    set(handles.text5,'String','CSATLAKOZOTT');
+    set(handles.text5,'FontSize',12);
       
 
     guidata(hObject, handles);
@@ -265,6 +249,11 @@ end
 
 % --- Executes on button press in Count_button.
 function Count_button_Callback(hObject, eventdata, handles)
+    
+    %Henrik ganyolas it is only temporary solution
+    if get(handles.checkbox_simulation, 'Value')
+        send_all_spectradata_to_TCP_IP(handles.tcpipClient, 'test_data')
+    end
     %Feladat
 
     %Adatok úgy jönnek h: azonosító(int32), hosszúság(int32), Ömlesztve azadat(int32 vagy char)
@@ -286,158 +275,249 @@ function Count_button_Callback(hObject, eventdata, handles)
     %       függ. Ez nem biztos, hogy így van de most még elég 
     
     
-    rawData=[-1,-1];
-    bl_flag=get(handles.baseline_correction_checkbox,'Value');
-    norm_flag=get(handles.normalization_checkbox,'Value');
-    spike_filt_flag2=get(handles.spike_filter_CB_twoSpetras,'Value');
-    spike_filt_flag1=get(handles.spikeFilterCB_onespetra,'Value');
-    OS_bl_flag=get(handles.OS_baseline,'Value');
-    window=str2double(get(handles.size_of_window_edit,'String'));
+    rawData = [-1,-1];
+    bl_flag = get(handles.baseline_correction_checkbox,'Value');
+    norm_flag = get(handles.normalization_checkbox,'Value');
+    spike_filt_flag2 = get(handles.spike_filter_CB_twoSpetras,'Value');
+    spike_filt_flag1 = get(handles.spikeFilterCB_onespetra,'Value');
+    OS_bl_flag = get(handles.OS_baseline,'Value');
+    window = str2double(get(handles.size_of_window_edit,'String'));
     sum_conc100=get(handles.sum_concentrations_checkbox,'Value');
     spectraHistoryMoving=[];
     specrtaHistorySpikeFilter=[];
     despersion=str2double(get(handles.despersionTextBox, 'String'));
+    result_buffer = [];
     
     
     %   1.Elõkészülni a kiértékeléshez, olyan programsrészek, amiket 
     %        csak egyszer kell megcsinálni a spetrumok kiértékelése elõtt
     %        (Értékelés típusától fûgg)
     
-    switch get(handles.popupmenu2,'Value')
-        case 1
-            handles.MOR=references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
-            ered=zeros(length(handles.MOR(1,:)),1);
-        case 2
-            %PLS-hez nem kell semmi ilyesmi mivel a model tartalmazza
-            %minden ilyesmit...
-        otherwise
-            msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!4!')
-    end  
+    if get(handles.checkbox_simulation, 'Value')
     
- 
-    while rawData(1)~=0 
-     %-------------------------------------------------------------------------------------------------------
-     %   2.Beérkezõ adatok azonosítása, megfelelõ változóba való mentáse (Beérkezõ adat azonosítájól függ)
-
-        rawData = fread(handles.tcpipClient,2,'int32');  
-        rawData=VBLong_32bit_to_ML_int32_64bit_socket(rawData);
-        x=0;
-
-
-        switch rawData(1)
+        switch get(handles.popupmenu2,'Value')
             case 1
-                x=fread(handles.tcpipClient,rawData(2),'int32');
-                x=VBLong_32bit_to_ML_int32_64bit_socket(x);
-                handles.MOIS=[handles.MOIS,x];
+                handles.MOR=references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
+                ered=zeros(length(handles.MOR(1,:)),1);
+            case 2
+                %PLS-hez nem kell semmi ilyesmi mivel a model tartalmazza
+                %minden ilyesmit...
             otherwise
-                msgbox('Ismeretlen adat azonosító érkezett a socketen');
+                msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!4!')
+        end  
+
+        id = 'start value';
+        
+        while not(strcmp(id, 'ENDE'))
+         %-------------------------------------------------------------------------------------------------------
+         %   2.Beérkezõ adatok azonosítása, megfelelõ változóba való mentáse (Beérkezõ adat azonosítájól függ)
+            id = 'start value';
+
+            while not (strcmp(id, 'INTE') || strcmp(id, 'ENDE'))
+                [id, message] = read_next_message_from_TCP_IP(handles.tcpipClient);
+            end
+
+            if strcmp(id, 'ENDE')
+                break;
+            end    
+            
+            x = message;
+
+
+
+         %-------------------------------------------------------------------------------------------------------        
+         %   3.Beérkezett adatok elõfeldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ)
+
+
+            switch id  %ADAT AZONOSÍTÓ szint
+                case 'INTE'
+                    % preprocessing function
+                    [x,spectraHistoryMoving] = SpectraFlowHandler(x, window, spectraHistoryMoving); 
+                    preProcessedSpectra = incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points);                  
+                otherwise
+                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
+            end     
+
+         %-------------------------------------------------------------------------------------------------------
+         %   4.Értékelés (Értékelés típusûtól)     
+         %TODO ez egy function kellene hogy legyen amit meg lehet hívni
+         %egyben
+            switch get(handles.popupmenu2,'Value')
+                case 1
+                    ered=CLS_ertekeles(handles.MOR,preProcessedSpectra);
+                case 2
+                    temp1=pls(preProcessedSpectra,handles.actPLSModel);
+                    ered=cell2mat(temp1.pred);
+                    ered=rot90(ered,3); 
+                otherwise
+                    msgbox('Kaka van a levesben')
+            end
+
+
+        %-------------------------------------------------------------------------------------------------------
+        %   5.Eredmények utólagos feldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ  
+
+
+            if (sum_conc100) 
+                ered=NomalizationToSum1(ered); 
+            end
+
+        %-------------------------------------------------------------------------------------------------------        
+        %   6.Eredmények kiküldáse (???)        (Beérkezõ adat azonosítójál  függ)
+
+            %eredmények kiíratása a kliensen
+            figure(2);
+            result_buffer = [result_buffer, ered];
+            plot(rot90(result_buffer, -1));
+            
+            for ii=1:size(ered,1)
+                handles.CD{ii,2}=num2str(ered(ii));
+            end
+
+            set(handles.uitable1,'Data',handles.CD);
+            drawnow;
+
+
         end
-        
-      
-        
-     %-------------------------------------------------------------------------------------------------------        
-     %   3.Beérkezett adatok elõfeldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ)
-
-
-        switch rawData(1)  %ADAT AZONOSÍTÓ szint
-            case 1
-                if (spike_filt_flag1)
-                    [x,caughtSpikeFlag]=spike_filter1(x,despersion);
-                    if (caughtSpikeFlag)
-                        addOne(handles.numberOfDetectedSpikes);
-                        WriteLog();
-                    end    
-                end
-                
-                if (spike_filt_flag2) 
-                    [blank,specrtaHistorySpikeFilter]=SpectraFlowHandler(x,2,specrtaHistorySpikeFilter);
-                    [x,caughtSpikeFlag]=spike_filter2(specrtaHistorySpikeFilter,despersion);
-                    if (caughtSpikeFlag)
-                        addOne(handles.numberOfDetectedSpikes);
-                        WriteLog();
-                    end    
-                end
-                [x,spectraHistoryMoving]=SpectraFlowHandler(x,window,spectraHistoryMoving); 
-                switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
-                    case 1 
-                            preProcessedSpectra=incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points); 
-                    case 2 
-                            preProcessedSpectra=incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points);
-                            %Henrik: itt lehet h kell forgatni a spetrumot, hogy megtudja enni a PLS model
-                            preProcessedSpectra=rot90(preProcessedSpectra,1);
-                    otherwise
-                        msgbox('Ismeretlen értékelési módot adott meg');
-
-                end
-            otherwise
-                msgbox('Ismeretlen adat azonosító érkezett a socketen');
-        end     
-     
-     %-------------------------------------------------------------------------------------------------------
-     %   4.Értékelés (Értékelés típusûtól)     
+       
+    else
+        %Original eavaulation process
 
         switch get(handles.popupmenu2,'Value')
             case 1
-                ered=CLS_ertekeles(handles.MOR,preProcessedSpectra);
+                handles.MOR=references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
+                ered=zeros(length(handles.MOR(1,:)),1);
             case 2
-                temp1=pls(preProcessedSpectra,handles.actPLSModel);
-                ered=cell2mat(temp1.pred);
-                ered=rot90(ered,3); 
+                %PLS-hez nem kell semmi ilyesmi mivel a model tartalmazza
+                %minden ilyesmit...
             otherwise
-                msgbox('Kaka van a levesben')
-        end
+                msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!4!')
+        end  
 
 
-    %-------------------------------------------------------------------------------------------------------
-    %   5.Eredmények utólagos feldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ  
+        while rawData(1)~=0 
+         %-------------------------------------------------------------------------------------------------------
+         %   2.Beérkezõ adatok azonosítása, megfelelõ változóba való mentáse (Beérkezõ adat azonosítájól függ)
+            rawData = fread(handles.tcpipClient,2,'int32');  
+            rawData=VBLong_32bit_to_ML_int32_64bit_socket(rawData);
+            x=0;
     
-        switch rawData(1)  %ADAT AZONOSÍTÓ szint
-            case 1
-                switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
-                    case 1
-                        if (sum_conc100) ered=NomalizationToSum1(ered); end
-                    case 2
-                        if (sum_conc100) ered=NomalizationToSum1(ered); end
-                    otherwise
-                        msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!!4!');
-                end
-            otherwise
-                msgbox('Ismeretlen adat azonosító érkezett a socketen');
+    
+            switch rawData(1)
+                case 1
+                    x=fread(handles.tcpipClient,rawData(2),'int32');
+                    x=VBLong_32bit_to_ML_int32_64bit_socket(x);
+                    handles.MOIS=[handles.MOIS,x];
+                otherwise
+                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
+            end
+
+
+
+         %-------------------------------------------------------------------------------------------------------        
+         %   3.Beérkezett adatok elõfeldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ)
+
+
+            switch rawData(1)  %ADAT AZONOSÍTÓ szint
+                case 1
+                    if (spike_filt_flag1)
+                        [x,caughtSpikeFlag]=spike_filter1(x,despersion);
+                        if (caughtSpikeFlag)
+                            addOne(handles.numberOfDetectedSpikes);
+                            WriteLog();
+                        end    
+                    end
+
+                    if (spike_filt_flag2) 
+                        [blank,specrtaHistorySpikeFilter]=SpectraFlowHandler(x,2,specrtaHistorySpikeFilter);
+                        [x,caughtSpikeFlag]=spike_filter2(specrtaHistorySpikeFilter,despersion);
+                        if (caughtSpikeFlag)
+                            addOne(handles.numberOfDetectedSpikes);
+                            WriteLog();
+                        end    
+                    end
+                    [x,spectraHistoryMoving]=SpectraFlowHandler(x,window,spectraHistoryMoving); 
+                    switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
+                        case 1 
+                                preProcessedSpectra=incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points); 
+                        case 2 
+                                preProcessedSpectra=incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points);
+                                %Henrik: itt lehet h kell forgatni a spetrumot, hogy megtudja enni a PLS model
+                                preProcessedSpectra=rot90(preProcessedSpectra,1);
+                        otherwise
+                            msgbox('Ismeretlen értékelési módot adott meg');
+
+                    end
+                otherwise
+                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
+            end     
+
+         %-------------------------------------------------------------------------------------------------------
+         %   4.Értékelés (Értékelés típusûtól)     
+
+            switch get(handles.popupmenu2,'Value')
+                case 1
+                    ered=CLS_ertekeles(handles.MOR,preProcessedSpectra);
+                case 2
+                    temp1=pls(preProcessedSpectra,handles.actPLSModel);
+                    ered=cell2mat(temp1.pred);
+                    ered=rot90(ered,3); 
+                otherwise
+                    msgbox('Kaka van a levesben')
+            end
+
+
+        %-------------------------------------------------------------------------------------------------------
+        %   5.Eredmények utólagos feldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ  
+
+            switch rawData(1)  %ADAT AZONOSÍTÓ szint
+                case 1
+                    switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
+                        case 1
+                            if (sum_conc100) ered=NomalizationToSum1(ered); end
+                        case 2
+                            if (sum_conc100) ered=NomalizationToSum1(ered); end
+                        otherwise
+                            msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!!4!');
+                    end
+                otherwise
+                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
+            end    
+
+        %-------------------------------------------------------------------------------------------------------        
+        %   6.Eredmények kiküldáse (???)        (Beérkezõ adat azonosítójál  függ)
+
+            switch rawData(1)  %ADAT AZONOSÍTÓ szint
+                case 1
+                    switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
+                        case 1
+                            ered_str=Convert_concentration_results_to_str(ered);
+                            fwrite(handles.tcpipClient, ered_str, 'char');                           
+                        case 2
+                            ered_str=Convert_concentration_results_to_str(ered);
+                            fwrite(handles.tcpipClient, ered_str, 'char');   
+                        otherwise
+                            msgbox('Ismeretlen értékelési mód lett kiválasztva!!4!');
+                    end
+                otherwise
+                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
+            end            
+
+
+
+
+            %eredmények kiíratása a kliensen
+            for ii=1:size(ered,1)
+                handles.CD{ii,2}=num2str(ered(ii));
+            end
+
+            set(handles.uitable1,'Data',handles.CD);
+            drawnow;
         end    
-    
-    %-------------------------------------------------------------------------------------------------------        
-    %   6.Eredmények kiküldáse (???)        (Beérkezõ adat azonosítójál  függ)
         
-        switch rawData(1)  %ADAT AZONOSÍTÓ szint
-            case 1
-                switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
-                    case 1
-                        ered_str=Convert_concentration_results_to_str(ered);
-                        fwrite(handles.tcpipClient, ered_str, 'char');                           
-                    case 2
-                        ered_str=Convert_concentration_results_to_str(ered);
-                        fwrite(handles.tcpipClient, ered_str, 'char');   
-                    otherwise
-                        msgbox('Ismeretlen értékelési mód lett kiválasztva!!4!');
-                end
-            otherwise
-                msgbox('Ismeretlen adat azonosító érkezett a socketen');
-        end            
-
-
-     
-        
-        %eredmények kiíratása a kliensen
-        for ii=1:size(ered,1)
-            handles.CD{ii,2}=num2str(ered(ii));
-        end
-
-        set(handles.uitable1,'Data',handles.CD);
-        drawnow;
-
-
     end
-    
+        
+        
     guidata(hObject, handles);
 end    
     
@@ -825,4 +905,43 @@ function despersionTextBox_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+end
+
+
+% --------------------------------------------------------------------
+function Untitled_1_Callback(hObject, eventdata, handles)
+% hObject    handle to Untitled_1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+end
+
+
+% --------------------------------------------------------------------
+function Untitled_2_Callback(hObject, eventdata, handles)
+% hObject    handle to Untitled_2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    beep
+end
+
+
+% --- Executes on button press in checkbox_simulation.
+function checkbox_simulation_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_simulation (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    if (get(handles.checkbox_simulation, 'Value'))
+        set(handles.edit1,'String','localhost');
+        set(handles.edit2,'String','4012');
+        echotcpip('on',4012)
+    else
+        echotcpip('off')
+        'kikapcs'
+    end
+
+
+
+    
+    guidata(hObject, handles);
+% Hint: get(hObject,'Value') returns toggle state of checkbox_simulation
 end

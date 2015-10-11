@@ -1,3 +1,22 @@
+%TODO : Spike filtering ahve to handled here
+% if (spike_filt_flag1)
+%     [x,caughtSpikeFlag]=spike_filter1(x,despersion);
+%     if (caughtSpikeFlag)
+%         addOne(handles.numberOfDetectedSpikes);
+%         WriteLog();
+%     end    
+% end
+% 
+% if (spike_filt_flag2) 
+%     [blank,specrtaHistorySpikeFilter]=SpectraFlowHandler(x,2,specrtaHistorySpikeFilter);
+%     [x,caughtSpikeFlag]=spike_filter2(specrtaHistorySpikeFilter,despersion);
+%     if (caughtSpikeFlag)
+%         addOne(handles.numberOfDetectedSpikes);
+%         WriteLog();
+%     end    
+% end
+
+
 function [s] = incoming_spectra_preparation( s, b, n, OSb, OSbp )
 %   s:spektrum adatsora
 %   b: kell e baseline flag
