@@ -288,7 +288,7 @@ function Count_button_Callback(hObject, eventdata, handles)
     despersion=str2double(get(handles.despersionTextBox, 'String'));
     result_buffer = [];
     
-    
+
     %   1.Elõkészülni a kiértékeléshez, olyan programsrészek, amiket 
     %        csak egyszer kell megcsinálni a spetrumok kiértékelése elõtt
     %        (Értékelés típusától fûgg)
@@ -297,8 +297,8 @@ function Count_button_Callback(hObject, eventdata, handles)
     
         switch get(handles.popupmenu2,'Value')
             case 1
-                handles.MOR=references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
-                ered=zeros(length(handles.MOR(1,:)),1);
+                preparated_references = references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
+                ered=zeros(length(preparated_references(1,:)),1);
             case 2
                 %PLS-hez nem kell semmi ilyesmi mivel a model tartalmazza
                 %minden ilyesmit...
@@ -344,7 +344,7 @@ function Count_button_Callback(hObject, eventdata, handles)
          %egyben
             switch get(handles.popupmenu2,'Value')
                 case 1
-                    ered=CLS_ertekeles(handles.MOR,preProcessedSpectra);
+                    ered=CLS_ertekeles(preparated_references,preProcessedSpectra);
                 case 2
                     temp1=pls(preProcessedSpectra,handles.actPLSModel);
                     ered=cell2mat(temp1.pred);
@@ -385,8 +385,8 @@ function Count_button_Callback(hObject, eventdata, handles)
 
         switch get(handles.popupmenu2,'Value')
             case 1
-                handles.MOR=references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
-                ered=zeros(length(handles.MOR(1,:)),1);
+                preparated_references=references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
+                ered=zeros(length(preparated_references(1,:)),1);
             case 2
                 %PLS-hez nem kell semmi ilyesmi mivel a model tartalmazza
                 %minden ilyesmit...
@@ -457,7 +457,7 @@ function Count_button_Callback(hObject, eventdata, handles)
 
             switch get(handles.popupmenu2,'Value')
                 case 1
-                    ered=CLS_ertekeles(handles.MOR,preProcessedSpectra);
+                    ered=CLS_ertekeles(preparated_references,preProcessedSpectra);
                 case 2
                     temp1=pls(preProcessedSpectra,handles.actPLSModel);
                     ered=cell2mat(temp1.pred);
