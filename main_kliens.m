@@ -22,7 +22,7 @@ function varargout = main_kliens(varargin)
 
 % Edit the above text to modify the response to help main
 
-% Last Modified by GUIDE v2.5 10-Oct-2015 21:38:59
+% Last Modified by GUIDE v2.5 25-Oct-2015 18:00:09
 
 % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -166,7 +166,7 @@ function load_references_button_Callback(hObject, eventdata, handles)
     %Itt tölti ki a kezdõ táblázatott értékekkel és kérdõjelekkel
     handles.CD=[];
     for ii=1:length(handles.NOR)
-        handles.CD=[ handles.CD ; [handles.NOR{ii}, {'? %'}]]
+        handles.CD = [ handles.CD ; [handles.NOR{ii}, {'? %'}]];
     end
     
     set(handles.uitable1,'Data',handles.CD)
@@ -252,7 +252,8 @@ function Count_button_Callback(hObject, eventdata, handles)
     
     %Henrik ganyolas it is only temporary solution
     if get(handles.checkbox_simulation, 'Value')
-        send_all_spectradata_to_TCP_IP(handles.tcpipClient, 'test_data')
+        sim_folder_path = get(handles.simulation_folder_path,'String');
+        send_all_spectradata_to_TCP_IP(handles.tcpipClient, sim_folder_path)      
     end
     %Feladat
 
@@ -933,10 +934,13 @@ function checkbox_simulation_Callback(hObject, eventdata, handles)
     if (get(handles.checkbox_simulation, 'Value'))
         set(handles.edit1,'String','localhost');
         set(handles.edit2,'String','4012');
-        echotcpip('on',4012)
+        echotcpip('on',4012);
+        set(handles.simulation_folder_path,'Enable','on');
+        set(handles.simulation_browse,'Enable','on');
     else
         echotcpip('off')
-        'kikapcs'
+        set(handles.simulation_folder_path,'Enable','off');
+        set(handles.simulation_browse,'Enable','off');      
     end
 
 
@@ -944,4 +948,14 @@ function checkbox_simulation_Callback(hObject, eventdata, handles)
     
     guidata(hObject, handles);
 % Hint: get(hObject,'Value') returns toggle state of checkbox_simulation
+end
+
+
+% --- Executes on button press in simulation_browse.
+function simulation_browse_Callback(hObject, eventdata, handles)
+% hObject    handle to simulation_browse (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    folder_name = uigetdir;
+    set(handles.simulation_folder_path,'String',folder_name);
 end
