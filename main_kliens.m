@@ -279,110 +279,14 @@ function Count_button_Callback(hObject, eventdata, handles)
     rawData = [-1,-1];
     bl_flag = get(handles.baseline_correction_checkbox,'Value');
     norm_flag = get(handles.normalization_checkbox,'Value');
-    spike_filt_flag2 = get(handles.spike_filter_CB_twoSpetras,'Value');
-    spike_filt_flag1 = get(handles.spikeFilterCB_onespetra,'Value');
     OS_bl_flag = get(handles.OS_baseline,'Value');
     window = str2double(get(handles.size_of_window_edit,'String'));
     sum_conc100=get(handles.sum_concentrations_checkbox,'Value');
     spectraHistoryMoving=[];
-    specrtaHistorySpikeFilter=[];
-    despersion=str2double(get(handles.despersionTextBox, 'String'));
     result_buffer = [];
-    
-
-    %   1.Elõkészülni a kiértékeléshez, olyan programsrészek, amiket 
-    %        csak egyszer kell megcsinálni a spetrumok kiértékelése elõtt
-    %        (Értékelés típusától fûgg)
-    
-    if get(handles.checkbox_simulation, 'Value')
-    
-        switch get(handles.popupmenu2,'Value')
-            case 1
-                preparated_references = references_spectras_preparation(handles.MOR,bl_flag,norm_flag,OS_bl_flag,handles.OS_baseline_points);
-                ered=zeros(length(preparated_references(1,:)),1);
-            case 2
-                %PLS-hez nem kell semmi ilyesmi mivel a model tartalmazza
-                %minden ilyesmit...
-            otherwise
-                msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!4!')
-        end  
-
-        id = 'start value';
-        
-        while not(strcmp(id, 'ENDE'))
-         %-------------------------------------------------------------------------------------------------------
-         %   2.Beérkezõ adatok azonosítása, megfelelõ változóba való mentáse (Beérkezõ adat azonosítájól függ)
-            id = 'start value';
-
-            while not (strcmp(id, 'INTE') || strcmp(id, 'ENDE'))
-                [id, message] = read_next_message_from_TCP_IP(handles.tcpipClient);
-            end
-
-            if strcmp(id, 'ENDE')
-                break;
-            end    
-            
-            x = message;
+    id = 'start value'; % Used in case of simulation
 
 
-
-         %-------------------------------------------------------------------------------------------------------        
-         %   3.Beérkezett adatok elõfeldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ)
-
-
-            switch id  %ADAT AZONOSÍTÓ szint
-                case 'INTE'
-                    % preprocessing function
-                    [x,spectraHistoryMoving] = SpectraFlowHandler(x, window, spectraHistoryMoving); 
-                    preProcessedSpectra = incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points);                  
-                otherwise
-                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
-            end     
-
-         %-------------------------------------------------------------------------------------------------------
-         %   4.Értékelés (Értékelés típusûtól)     
-         %TODO ez egy function kellene hogy legyen amit meg lehet hívni
-         %egyben
-            switch get(handles.popupmenu2,'Value')
-                case 1
-                    ered=CLS_ertekeles(preparated_references,preProcessedSpectra);
-                case 2
-                    temp1=pls(preProcessedSpectra,handles.actPLSModel);
-                    ered=cell2mat(temp1.pred);
-                    ered=rot90(ered,3); 
-                otherwise
-                    msgbox('Kaka van a levesben')
-            end
-
-
-        %-------------------------------------------------------------------------------------------------------
-        %   5.Eredmények utólagos feldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ  
-
-
-            if (sum_conc100) 
-                ered=NomalizationToSum1(ered); 
-            end
-
-        %-------------------------------------------------------------------------------------------------------        
-        %   6.Eredmények kiküldáse (???)        (Beérkezõ adat azonosítójál  függ)
-
-            %eredmények kiíratása a kliensen
-            figure(2);
-            result_buffer = [result_buffer, ered];
-            plot(rot90(result_buffer, -1));
-            
-            for ii=1:size(ered,1)
-                handles.CD{ii,2}=num2str(ered(ii));
-            end
-
-            set(handles.uitable1,'Data',handles.CD);
-            drawnow;
-
-
-        end
-       
-    else
-        %Original eavaulation process
 
         switch get(handles.popupmenu2,'Value')
             case 1
@@ -395,25 +299,45 @@ function Count_button_Callback(hObject, eventdata, handles)
                 msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!4!')
         end  
 
-
-        while rawData(1)~=0 
          %-------------------------------------------------------------------------------------------------------
          %   2.Beérkezõ adatok azonosítása, megfelelõ változóba való mentáse (Beérkezõ adat azonosítájól függ)
-            rawData = fread(handles.tcpipClient,2,'int32');  
-            rawData=VBLong_32bit_to_ML_int32_64bit_socket(rawData);
-            x=0;
-    
-    
-            switch rawData(1)
-                case 1
-                    x=fread(handles.tcpipClient,rawData(2),'int32');
-                    x=VBLong_32bit_to_ML_int32_64bit_socket(x);
-                    handles.MOIS=[handles.MOIS,x];
-                otherwise
-                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
+
+        while rawData(1)~=0 && not(strcmp(id, 'ENDE'))
+            if not(get(handles.checkbox_simulation, 'Value'))
+             % RELA TIME MEASUREMENT
+                rawData = fread(handles.tcpipClient,2,'int32');  
+                rawData = VBLong_32bit_to_ML_int32_64bit_socket(rawData);
+                x=0;
+
+
+                switch rawData(1)
+                    case 1
+                        x=fread(handles.tcpipClient,rawData(2),'int32');
+                        x=VBLong_32bit_to_ML_int32_64bit_socket(x);
+                        handles.MOIS=[handles.MOIS,x];
+                    otherwise
+                        msgbox('Ismeretlen adat azonosító érkezett a socketen');
+                end
+
+            else
+                %SIMULATION
+                id = 'start value';
+
+                while not (strcmp(id, 'INTE') || strcmp(id, 'ENDE'))
+                    [id, message] = read_next_message_from_TCP_IP(handles.tcpipClient);
+                end
+
+                if strcmp(id, 'ENDE')
+                    break;
+                end    
+
+                x = message;
+                %it is temporary... Shame on me... :( UGLYYY
+                if strcmp(id, 'INTE')
+                    rawData(1) = 1;
+                end
+                
             end
-
-
 
          %-------------------------------------------------------------------------------------------------------        
          %   3.Beérkezett adatok elõfeldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ)
@@ -421,34 +345,8 @@ function Count_button_Callback(hObject, eventdata, handles)
 
             switch rawData(1)  %ADAT AZONOSÍTÓ szint
                 case 1
-                    if (spike_filt_flag1)
-                        [x,caughtSpikeFlag]=spike_filter1(x,despersion);
-                        if (caughtSpikeFlag)
-                            addOne(handles.numberOfDetectedSpikes);
-                            WriteLog();
-                        end    
-                    end
-
-                    if (spike_filt_flag2) 
-                        [blank,specrtaHistorySpikeFilter]=SpectraFlowHandler(x,2,specrtaHistorySpikeFilter);
-                        [x,caughtSpikeFlag]=spike_filter2(specrtaHistorySpikeFilter,despersion);
-                        if (caughtSpikeFlag)
-                            addOne(handles.numberOfDetectedSpikes);
-                            WriteLog();
-                        end    
-                    end
-                    [x,spectraHistoryMoving]=SpectraFlowHandler(x,window,spectraHistoryMoving); 
-                    switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
-                        case 1 
-                                preProcessedSpectra=incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points); 
-                        case 2 
-                                preProcessedSpectra=incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points);
-                                %Henrik: itt lehet h kell forgatni a spetrumot, hogy megtudja enni a PLS model
-                                preProcessedSpectra=rot90(preProcessedSpectra,1);
-                        otherwise
-                            msgbox('Ismeretlen értékelési módot adott meg');
-
-                    end
+                    [x, spectraHistoryMoving]=SpectraFlowHandler(x,window,spectraHistoryMoving); 
+                    preProcessedSpectra=incoming_spectra_preparation(x,bl_flag,norm_flag, OS_bl_flag, handles.OS_baseline_points);
                 otherwise
                     msgbox('Ismeretlen adat azonosító érkezett a socketen');
             end     
@@ -460,6 +358,8 @@ function Count_button_Callback(hObject, eventdata, handles)
                 case 1
                     ered=CLS_ertekeles(preparated_references,preProcessedSpectra);
                 case 2
+                    %Henrik: itt lehet h kell forgatni a spetrumot, hogy megtudja enni a PLS model
+                    preProcessedSpectra=rot90(preProcessedSpectra,1);
                     temp1=pls(preProcessedSpectra,handles.actPLSModel);
                     ered=cell2mat(temp1.pred);
                     ered=rot90(ered,3); 
@@ -471,38 +371,33 @@ function Count_button_Callback(hObject, eventdata, handles)
         %-------------------------------------------------------------------------------------------------------
         %   5.Eredmények utólagos feldolgozása (Értékelés típusûtól és beérkezõ adat azonosítájól IS függ  
 
-            switch rawData(1)  %ADAT AZONOSÍTÓ szint
-                case 1
-                    switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
-                        case 1
-                            if (sum_conc100) ered=NomalizationToSum1(ered); end
-                        case 2
-                            if (sum_conc100) ered=NomalizationToSum1(ered); end
-                        otherwise
-                            msgbox('Ismeretlen értékelési mód lett kiválasztva!!négy!!4!');
-                    end
-                otherwise
-                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
-            end    
+            if (sum_conc100) 
+                ered=NomalizationToSum1(ered); 
+            end  
 
         %-------------------------------------------------------------------------------------------------------        
         %   6.Eredmények kiküldáse (???)        (Beérkezõ adat azonosítójál  függ)
-
-            switch rawData(1)  %ADAT AZONOSÍTÓ szint
-                case 1
-                    switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
-                        case 1
-                            ered_str=Convert_concentration_results_to_str(ered);
-                            fwrite(handles.tcpipClient, ered_str, 'char');                           
-                        case 2
-                            ered_str=Convert_concentration_results_to_str(ered);
-                            fwrite(handles.tcpipClient, ered_str, 'char');   
-                        otherwise
-                            msgbox('Ismeretlen értékelési mód lett kiválasztva!!4!');
-                    end
-                otherwise
-                    msgbox('Ismeretlen adat azonosító érkezett a socketen');
-            end            
+            if not(get(handles.checkbox_simulation, 'Value'))
+                switch rawData(1)  %ADAT AZONOSÍTÓ szint
+                    case 1
+                        switch get(handles.popupmenu2,'Value') %ÉRTÉKELÉS TIPUSA szint
+                            case 1
+                                ered_str=Convert_concentration_results_to_str(ered);
+                                fwrite(handles.tcpipClient, ered_str, 'char');                           
+                            case 2
+                                ered_str=Convert_concentration_results_to_str(ered);
+                                fwrite(handles.tcpipClient, ered_str, 'char');   
+                            otherwise
+                                msgbox('Ismeretlen értékelési mód lett kiválasztva!!4!');
+                        end
+                    otherwise
+                        msgbox('Ismeretlen adat azonosító érkezett a socketen');
+                end
+            else
+                figure(2);
+                result_buffer = [result_buffer, ered];
+                plot(rot90(result_buffer, -1));
+            end
 
 
 
@@ -516,7 +411,7 @@ function Count_button_Callback(hObject, eventdata, handles)
             drawnow;
         end    
         
-    end
+%    end
         
         
     guidata(hObject, handles);
@@ -636,27 +531,7 @@ function size_of_window_edit_CreateFcn(hObject, eventdata, handles)
     end
 end
 
-% --- Executes on button press in spike_filter_CB_twoSpetras.
-function spike_filter_CB_twoSpetras_Callback(hObject, eventdata, handles)
-    if get(handles.spike_filter_CB_twoSpetras,'Value')
-        set(handles.caughtSpikePanel,'Visible','on');
-        set(handles.spikeFilterCB_onespetra,'Value', false);
-    else     
-        if (get(handles.spike_filter_CB_twoSpetras,'Value') || get(handles.spikeFilterCB_onespetra,'Value'))
-            set(handles.caughtSpikePanel,'Visible','on');
-        else
-            set(handles.caughtSpikePanel,'Visible','off');            
-        end 
-    end     
-    
-    guidata(hObject, handles); 
 
-% hObject    handle to spike_filter_CB_twoSpetras (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of spike_filter_CB_twoSpetras
-end
 
 % --- Executes on button press in OC_baseline_load.
 function OC_baseline_load_Callback(hObject, eventdata, handles)
@@ -863,25 +738,6 @@ function numberOfDetectedSpikes_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 end
 
-
-% --- Executes on button press in spikeFilterCB_onespetra.
-function spikeFilterCB_onespetra_Callback(hObject, eventdata, handles)
-% hObject    handle to spikeFilterCB_onespetra (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-    if (get(handles.spikeFilterCB_onespetra,'Value'))
-        set(handles.spike_filter_CB_twoSpetras,'Value', false);
-        set(handles.caughtSpikePanel,'Visible','on'); 
-    else
-        if (get(handles.spike_filter_CB_twoSpetras,'Value') || get(handles.spikeFilterCB_onespetra,'Value'));
-            set(handles.caughtSpikePanel,'Visible','on');
-        else
-            set(handles.caughtSpikePanel,'Visible','off');            
-        end         
-    end    
-    guidata(hObject, handles);
-% Hint: get(hObject,'Value') returns toggle state of spikeFilterCB_onespetra
-end
 
 
 

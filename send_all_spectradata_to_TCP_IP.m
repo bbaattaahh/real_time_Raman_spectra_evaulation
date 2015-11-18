@@ -20,7 +20,7 @@ function [] = send_all_spectradata_to_TCP_IP(opened_tcpip, path_of_simulation_fo
 
 
     for i = 3 : length(names)
-         act_spectra_data = importdata(strcat('H_13\', names(i).name));
+         act_spectra_data = importdata(strcat(path_of_simulation_folder, '\', names(i).name));
          wavenumber_values = act_spectra_data(:, 1);
          intensity_values = act_spectra_data(:, 2);
          
