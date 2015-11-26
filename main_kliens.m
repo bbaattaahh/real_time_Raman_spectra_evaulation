@@ -352,7 +352,7 @@ function Count_button_Callback(hObject, eventdata, handles)
             end     
 
          %-------------------------------------------------------------------------------------------------------
-         %   4.Értékelés (Értékelés típusûtól)     
+         %   4.Értékelés f(Értékelés típusûtól)     
 
             switch get(handles.popupmenu2,'Value')
                 case 1
@@ -360,7 +360,9 @@ function Count_button_Callback(hObject, eventdata, handles)
                 case 2
                     %Henrik: itt lehet h kell forgatni a spetrumot, hogy megtudja enni a PLS model
                     preProcessedSpectra=rot90(preProcessedSpectra,1);
-                    temp1=pls(preProcessedSpectra,handles.actPLSModel);
+                    options.display       = 'off';     %Displays output to the command window
+                    options.plots         = 'none';  %Governs plots to make
+                    temp1=pls(preProcessedSpectra,handles.actPLSModel, options);
                     ered=cell2mat(temp1.pred);
                     ered=rot90(ered,3); 
                 otherwise
@@ -411,8 +413,8 @@ function Count_button_Callback(hObject, eventdata, handles)
             drawnow;
         end    
         
-%    end
-        
+        %save the simulation aoutput to a mat file
+        save('last_res', 'result_buffer')
         
     guidata(hObject, handles);
 end    
